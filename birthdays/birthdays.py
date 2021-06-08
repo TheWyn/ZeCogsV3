@@ -214,7 +214,9 @@ class Birthdays(Cog):
         for guild_id, guild_bdays in birthdays.items():
             for date, bdays in guild_bdays.items():
                 for user_id, year in bdays.items():
-                    if not any(g.get_member(int(user_id)) is not None for g in self.bot.guilds):
+                    if all(
+                        g.get_member(int(user_id)) is None for g in self.bot.guilds
+                    ):
                         async with self.get_date_config(guild_id, date)() as config_bdays:
                             del config_bdays[user_id]
                 config_bdays = await self.get_date_config(guild_id, date)()
@@ -247,9 +249,15 @@ class Birthdays(Cog):
     # Provided by <@78631113035100160>
     async def maybe_update_guild(self, guild: discord.Guild):
         # ctx.guild.chunked is innaccurate, discord.py#1638
-        if not guild.unavailable and guild.large:
-            if not guild.chunked or any(m.joined_at is None for m in guild.members):
-                await self.bot.request_offline_members(guild)
+        if (
+            not guild.unavailable
+            and guild.large
+            and (
+                not guild.chunked
+                or any(m.joined_at is None for m in guild.members)
+            )
+        ):
+            await self.bot.request_offline_members(guild)
 
     def parse_date(self, date_str: str):
         result = None

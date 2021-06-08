@@ -184,9 +184,14 @@ class ReactRoles(Cog):
         server_links = await self.config.guild(guild).links()
         embed = discord.Embed(title=self.LINK_LIST_TITLE(), colour=discord.Colour.light_grey())
         for name, pairs in server_links.items():
-            value = ""
-            for channel, messages in itertools.groupby(pairs, key=lambda p: p.split("_")[0]):
-                value += "<#{}>: ".format(channel) + ", ".join(p.split("_")[1] for p in messages)
+            value = "".join(
+                "<#{}>: ".format(channel)
+                + ", ".join(p.split("_")[1] for p in messages)
+                for channel, messages in itertools.groupby(
+                    pairs, key=lambda p: p.split("_")[0]
+                )
+            )
+
             if len(value) > 0:
                 embed.add_field(name=name, value=value)
         if len(embed.fields) == 0:
@@ -230,28 +235,28 @@ class ReactRoles(Cog):
             if len(split_pair) == 2 and split_pair[-1].isdigit():
                 channel_id, message_id = split_pair
                 channel = guild.get_channel(int(channel_id))
-                if channel is not None:
-                    message = await self.safe_get_message(channel, message_id)
-                    if message is not None:
-                        pairs.append("_".join(split_pair))
-                    else:
-                        messages_not_found.append(split_pair)
-                else:
+                if channel is None:
                     channels_not_found.append(channel_id)
+                else:
+                    message = await self.safe_get_message(channel, message_id)
+                    if message is None:
+                        messages_not_found.append(split_pair)
+                    else:
+                        pairs.append("_".join(split_pair))
             else:
                 invalid_pairs.append(pair)
         # Generate response message
         failure_reasons = []
         if len(linked_messages) == 0:
             failure_reasons.append(self.LINK_MUST_SPECIFY())
-        if len(invalid_pairs) > 0:
+        if invalid_pairs:
             failure_reasons.append(self.LINK_PAIR_INVALID(", ".join(invalid_pairs)))
-        if len(channels_not_found) > 0:
+        if channels_not_found:
             failure_reasons.append(self.LINK_CHANNEL_NOT_FOUND(", ".join(channels_not_found)))
-        if len(messages_not_found) > 0:
+        if messages_not_found:
             failure_reasons.append(self.LINK_MESSAGE_NOT_FOUND(
                 ", ".join("{} in <#{}>".format(p[0], p[1]) for p in messages_not_found)))
-        if len(failure_reasons) > 0:
+        if failure_reasons:
             response = self.LINK_FAILED(reasons="\n".join(failure_reasons))
         else:
             # Save configs
@@ -502,9 +507,15 @@ class ReactRoles(Cog):
     # Provided by <@78631113035100160>
     async def maybe_update_guild(self, guild: discord.Guild):
         # ctx.guild.chunked is innaccurate, discord.py#1638
-        if not guild.unavailable and guild.large:
-            if not guild.chunked or any(m.joined_at is None for m in guild.members):
-                await self.bot.request_offline_members(guild)
+        if (
+            not guild.unavailable
+            and guild.large
+            and (
+                not guild.chunked
+                or any(m.joined_at is None for m in guild.members)
+            )
+        ):
+            await self.bot.request_offline_members(guild)
 
     def get_guild(self, guild_id: int) -> Group:
         # noinspection PyProtectedMember
