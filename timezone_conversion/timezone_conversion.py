@@ -151,7 +151,7 @@ If timezone2 is omitted, it will only respond to *now* requests.""")
         aliases = await self.config.aliases()
         alias_list = list(aliases.items())
         embed = discord.Embed(title=self.ALIAS_LIST_TITLE(), colour=discord.Colour.light_grey(), description="```")
-        if len(alias_list) > 0:
+        if alias_list:
             half = math.ceil(len(alias_list) / 2)
             for i, a in enumerate(alias_list[:half]):
                 a1_name = "{} → {}".format(*a)
@@ -210,9 +210,9 @@ If timezone2 is omitted, it will only respond to *now* requests.""")
         csource, zone1 = self.match_timezone(country_source)
         cdest, zone2 = self.match_timezone(country_dest)
         if zone1 is None:  # Source timezone not found
-            result = self.INVALID_SOURCE_TZ() + self.LIST_OF_TZ()
+            return self.INVALID_SOURCE_TZ() + self.LIST_OF_TZ()
         elif zone2 is None:  # Destination timezone not found
-            result = self.INVALID_DESTINATION_TZ() + self.LIST_OF_TZ()
+            return self.INVALID_DESTINATION_TZ() + self.LIST_OF_TZ()
         else:
             if hours_source is None and minutes_source is None:
                 time_source = self.get_zone_time(zone1)
@@ -225,8 +225,13 @@ If timezone2 is omitted, it will only respond to *now* requests.""")
                 time_diff = (int(time_diff[0]), int(time_diff[1]))
             hsource = self.format_hours_minutes(hours_source, minutes_source)
             hdest = self.format_hours_minutes(int(hours_dest), int(minutes_dest))
-            result = self.TIME_DIFF(hsource=hsource, csource=csource, hdest=hdest, cdest=cdest, tdiff=time_diff)
-        return result
+            return self.TIME_DIFF(
+                hsource=hsource,
+                csource=csource,
+                hdest=hdest,
+                cdest=cdest,
+                tdiff=time_diff,
+            )
 
     def _handle_time(self, time: str, country_source: str, country_result: str) -> str:
         regex = self.TIME_REGEX.fullmatch(time)
@@ -256,13 +261,9 @@ If timezone2 is omitted, it will only respond to *now* requests.""")
 
     def _convert_12h_to_24h(self, hours: int, is_pm: bool) -> int:
         if hours == 12:
-            if is_pm:
-                result = 12
-            else:
-                result = 0
+            return 12 if is_pm else 0
         else:
-            result = hours + (12 if is_pm else 0)
-        return result
+            return hours + (12 if is_pm else 0)
 
     def _get_12h_str(self, hours: int, mins_str: str) -> str:
         pm_str = "AM" if hours < 12 else "PM"
